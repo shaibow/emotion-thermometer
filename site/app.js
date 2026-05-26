@@ -580,7 +580,7 @@ function wireForm(form) {
       if (!button) return;
       selectZone(form, button.dataset.zoneChoice);
       saveFeelingHistory(form);
-      updateProgress(form, meter, { celebrate: true });
+      updateProgress(form, meter, { celebrate: false });
     });
   }
 
@@ -600,7 +600,7 @@ function wireForm(form) {
     const data = saveForm(form);
     saveFeelingHistory(form, data);
     updateAllStepProgress(form);
-    updateProgress(form, meter, { celebrate: true });
+    updateProgress(form, meter, { celebrate: false });
   };
 
   form.addEventListener("input", handleFormChange);
@@ -625,6 +625,21 @@ function wireForm(form) {
     localStorage.removeItem(historyKey());
     localStorage.removeItem(currentHistoryIdKey());
     renderHistory(form);
+  });
+
+  form.querySelector("[data-action=save]")?.addEventListener("click", (event) => {
+    const btn = event.currentTarget;
+    const data = saveForm(form);
+    saveFeelingHistory(form, data);
+    updateProgress(form, meter, { celebrate: true });
+
+    const orig = btn.textContent;
+    btn.textContent = "Saved ✓";
+    btn.disabled = true;
+    window.setTimeout(() => {
+      btn.textContent = orig;
+      btn.disabled = false;
+    }, 2000);
   });
 
   form.querySelector("[data-action=save-pdf]")?.addEventListener("click", (event) => {
