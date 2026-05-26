@@ -9,6 +9,13 @@ const ZONE_DETAILS = {
   yellow: "Early warning",
   green: "Calm and steady",
 };
+const COLUMN_LABELS = {
+  feeling: "Feeling",
+  physical: "Physical signals",
+  thoughts: "Thoughts",
+  behavior: "Behavior",
+  coping: "What can I do?",
+};
 
 function pageKey() {
   return STORAGE_PREFIX + document.body.dataset.page;
@@ -235,25 +242,33 @@ function getEmotionLabel(form, data = readFormData(form)) {
   return emotion;
 }
 
-function getFeelingSnapshots(form, data = readFormData(form)) {
+function getZoneSnapshots(form, data = readFormData(form)) {
   return getZoneRows(form)
     .map((row) => {
-      const field = row.querySelector("textarea[data-field$='-feeling']");
-      const value = field ? (data[field.dataset.field] || "").trim() : "";
+      const fields = [...row.querySelectorAll("textarea[data-field]")]
+        .map((ta) => {
+          const colKey = ta.dataset.field.replace(/^[^-]+-/, "");
+          return {
+            key: colKey,
+            label: COLUMN_LABELS[colKey] || colKey,
+            value: (data[ta.dataset.field] || "").trim(),
+          };
+        })
+        .filter((f) => f.value);
       return {
         zone: row.dataset.zone,
         label: row.cells[0]?.textContent.trim() || row.dataset.zone,
-        value,
+        fields,
       };
     })
-    .filter((item) => item.value);
+    .filter((item) => item.fields.length > 0);
 }
 
 function saveFeelingHistory(form, data = readFormData(form)) {
   if (!form.querySelector("[data-history-card]")) return;
 
-  const feelings = getFeelingSnapshots(form, data);
-  if (!feelings.length) {
+  const zones = getZoneSnapshots(form, data);
+  if (!zones.length) {
     renderHistory(form);
     return;
   }
@@ -265,7 +280,7 @@ function saveFeelingHistory(form, data = readFormData(form)) {
     name: (data.name || "").trim(),
     emotion: getEmotionLabel(form, data),
     activeZone: form.dataset.activeZone || "",
-    feelings,
+    zones,
   };
   const history = [entry, ...getHistory().filter((item) => item.id !== entry.id)].slice(0, HISTORY_LIMIT);
   setHistory(history);
@@ -279,6 +294,10 @@ function formatDate(value) {
   return date.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
 }
 
+function removeHistoryEntry(id) {
+  setHistory(getHistory().filter((entry) => entry.id !== id));
+}
+
 function renderHistory(form) {
   const list = form.querySelector("[data-history-list]");
   if (!list) return;
@@ -288,7 +307,7 @@ function renderHistory(form) {
   if (!history.length) {
     const empty = document.createElement("p");
     empty.className = "history-empty";
-    empty.textContent = "No saved feeling inputs yet. Start typing in the Feeling column and this browser will remember them.";
+    empty.textContent = "No saved feeling inputs yet. Start filling in the thermometer and this browser will remember them.";
     list.appendChild(empty);
     return;
   }
@@ -297,8 +316,23 @@ function renderHistory(form) {
     const article = document.createElement("article");
     article.className = "history-entry";
 
+    const header = document.createElement("div");
+    header.className = "history-entry-header";
+
     const title = document.createElement("h3");
     title.textContent = entry.emotion || "Untitled feeling";
+
+    const removeBtn = document.createElement("button");
+    removeBtn.type = "button";
+    removeBtn.className = "history-remove-btn";
+    removeBtn.setAttribute("aria-label", "Remove this entry");
+    removeBtn.textContent = "×";
+    removeBtn.addEventListener("click", () => {
+      removeHistoryEntry(entry.id);
+      renderHistory(form);
+    });
+
+    header.append(title, removeBtn);
 
     const meta = document.createElement("p");
     meta.className = "history-meta";
@@ -306,18 +340,65 @@ function renderHistory(form) {
       .filter(Boolean)
       .join(" - ");
 
-    const chips = document.createElement("div");
-    chips.className = "feeling-chips";
-    entry.feelings.forEach((feeling) => {
-      const chip = document.createElement("span");
-      chip.className = `feeling-chip zone-${feeling.zone}`;
-      chip.textContent = `${feeling.label}: ${feeling.value}`;
-      chips.appendChild(chip);
-    });
+    article.append(header, meta);
 
-    article.append(title, meta, chips);
+    const zones = entry.zones || [];
+    const legacyFeelings = !entry.zones && Array.isArray(entry.feelings) ? entry.feelings : [];
+
+    if (zones.length) {
+      const zoneList = document.createElement("div");
+      zoneList.className = "history-zones";
+      zones.forEach((zone) => {
+        const zoneEl = document.createElement("div");
+        zoneEl.className = `history-zone zone-${zone.zone}`;
+
+        const zoneLabel = document.createElement("span");
+        zoneLabel.className = "history-zone-label";
+        zoneLabel.textContent = zone.label;
+        zoneEl.appendChild(zoneLabel);
+
+        const fieldsList = document.createElement("div");
+        fieldsList.className = "history-zone-fields";
+        zone.fields.forEach((field) => {
+          const chip = document.createElement("span");
+          chip.className = `feeling-chip zone-${zone.zone}`;
+          chip.textContent = `${field.label}: ${field.value}`;
+          fieldsList.appendChild(chip);
+        });
+        zoneEl.appendChild(fieldsList);
+        zoneList.appendChild(zoneEl);
+      });
+      article.appendChild(zoneList);
+    } else if (legacyFeelings.length) {
+      const chips = document.createElement("div");
+      chips.className = "feeling-chips";
+      legacyFeelings.forEach((feeling) => {
+        const chip = document.createElement("span");
+        chip.className = `feeling-chip zone-${feeling.zone}`;
+        chip.textContent = `${feeling.label}: ${feeling.value}`;
+        chips.appendChild(chip);
+      });
+      article.appendChild(chips);
+    }
+
     list.appendChild(article);
   });
+}
+
+function updateStepProgress(row) {
+  const textareas = [...row.querySelectorAll("textarea[data-field]")];
+  const isSelected = row.classList.contains("is-selected");
+  textareas.forEach((ta, i) => {
+    if (!isSelected) {
+      ta.disabled = true;
+      return;
+    }
+    ta.disabled = i > 0 && !textareas[i - 1].value.trim();
+  });
+}
+
+function updateAllStepProgress(form) {
+  getZoneRows(form).forEach(updateStepProgress);
 }
 
 function createZonePicker(form) {
@@ -375,6 +456,8 @@ function selectZone(form, zone) {
   } else {
     localStorage.removeItem(zoneKey());
   }
+
+  updateAllStepProgress(form);
 }
 
 function collectStyles() {
@@ -599,6 +682,7 @@ function wireForm(form) {
   }
 
   selectZone(form, localStorage.getItem(zoneKey()) || "");
+  updateAllStepProgress(form);
   updateProgress(form, meter, { celebrate: false });
   renderHistory(form);
 
@@ -612,6 +696,7 @@ function wireForm(form) {
     saveSessionName(form);
     const data = saveForm(form);
     saveFeelingHistory(form, data);
+    updateAllStepProgress(form);
     updateProgress(form, meter, { celebrate: true });
   };
 
