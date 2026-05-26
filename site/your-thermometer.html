@@ -7,7 +7,8 @@
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body data-page="your-thermometer">
-    <header>
+    <header class="hero">
+      <p class="eyebrow">Make your own</p>
       <h1>Your emotion thermometer</h1>
       <p class="subtitle">Blank template — fill in every cell. Progress saves in this browser.</p>
     </header>
@@ -50,51 +51,35 @@
           <tbody>
             <tr class="zone-red">
               <td>Red</td>
-              <td><textarea data-field="r1-feeling" aria-label="Red row 1 feeling"></textarea></td>
-              <td><textarea data-field="r1-physical" aria-label="Red row 1 physical"></textarea></td>
-              <td><textarea data-field="r1-thoughts" aria-label="Red row 1 thoughts"></textarea></td>
-              <td><textarea data-field="r1-behavior" aria-label="Red row 1 behavior"></textarea></td>
-              <td><textarea data-field="r1-coping" aria-label="Red row 1 coping"></textarea></td>
-            </tr>
-            <tr class="zone-red">
-              <td>Red</td>
-              <td><textarea data-field="r2-feeling" aria-label="Red row 2 feeling"></textarea></td>
-              <td><textarea data-field="r2-physical" aria-label="Red row 2 physical"></textarea></td>
-              <td><textarea data-field="r2-thoughts" aria-label="Red row 2 thoughts"></textarea></td>
-              <td><textarea data-field="r2-behavior" aria-label="Red row 2 behavior"></textarea></td>
-              <td><textarea data-field="r2-coping" aria-label="Red row 2 coping"></textarea></td>
+              <td><textarea data-field="r1-feeling" aria-label="Red feeling" placeholder="What does peak intensity feel like?"></textarea></td>
+              <td><textarea data-field="r1-physical" aria-label="Red physical" placeholder="Body signals you notice"></textarea></td>
+              <td><textarea data-field="r1-thoughts" aria-label="Red thoughts" placeholder="Thoughts that show up"></textarea></td>
+              <td><textarea data-field="r1-behavior" aria-label="Red behavior" placeholder="What others might see"></textarea></td>
+              <td><textarea data-field="r1-coping" aria-label="Red coping" placeholder="Fast, safe next step"></textarea></td>
             </tr>
             <tr class="zone-orange">
               <td>Orange</td>
-              <td><textarea data-field="o1-feeling" aria-label="Orange row 1 feeling"></textarea></td>
-              <td><textarea data-field="o1-physical" aria-label="Orange row 1 physical"></textarea></td>
-              <td><textarea data-field="o1-thoughts" aria-label="Orange row 1 thoughts"></textarea></td>
-              <td><textarea data-field="o1-behavior" aria-label="Orange row 1 behavior"></textarea></td>
-              <td><textarea data-field="o1-coping" aria-label="Orange row 1 coping"></textarea></td>
-            </tr>
-            <tr class="zone-orange">
-              <td>Orange</td>
-              <td><textarea data-field="o2-feeling" aria-label="Orange row 2 feeling"></textarea></td>
-              <td><textarea data-field="o2-physical" aria-label="Orange row 2 physical"></textarea></td>
-              <td><textarea data-field="o2-thoughts" aria-label="Orange row 2 thoughts"></textarea></td>
-              <td><textarea data-field="o2-behavior" aria-label="Orange row 2 behavior"></textarea></td>
-              <td><textarea data-field="o2-coping" aria-label="Orange row 2 coping"></textarea></td>
+              <td><textarea data-field="o1-feeling" aria-label="Orange feeling" placeholder="Strong, but still workable"></textarea></td>
+              <td><textarea data-field="o1-physical" aria-label="Orange physical" placeholder="Breathing, muscles, energy"></textarea></td>
+              <td><textarea data-field="o1-thoughts" aria-label="Orange thoughts" placeholder="Common warning thoughts"></textarea></td>
+              <td><textarea data-field="o1-behavior" aria-label="Orange behavior" placeholder="Actions or urges"></textarea></td>
+              <td><textarea data-field="o1-coping" aria-label="Orange coping" placeholder="What helps you come down?"></textarea></td>
             </tr>
             <tr class="zone-yellow">
               <td>Yellow</td>
-              <td><textarea data-field="y1-feeling" aria-label="Yellow feeling"></textarea></td>
-              <td><textarea data-field="y1-physical" aria-label="Yellow physical"></textarea></td>
-              <td><textarea data-field="y1-thoughts" aria-label="Yellow thoughts"></textarea></td>
-              <td><textarea data-field="y1-behavior" aria-label="Yellow behavior"></textarea></td>
-              <td><textarea data-field="y1-coping" aria-label="Yellow coping"></textarea></td>
+              <td><textarea data-field="y1-feeling" aria-label="Yellow feeling" placeholder="Early signs"></textarea></td>
+              <td><textarea data-field="y1-physical" aria-label="Yellow physical" placeholder="Small body clues"></textarea></td>
+              <td><textarea data-field="y1-thoughts" aria-label="Yellow thoughts" placeholder="What starts looping?"></textarea></td>
+              <td><textarea data-field="y1-behavior" aria-label="Yellow behavior" placeholder="Tiny changes in behavior"></textarea></td>
+              <td><textarea data-field="y1-coping" aria-label="Yellow coping" placeholder="Act early"></textarea></td>
             </tr>
             <tr class="zone-green">
               <td>Green</td>
-              <td><textarea data-field="g1-feeling" aria-label="Green feeling"></textarea></td>
-              <td><textarea data-field="g1-physical" aria-label="Green physical"></textarea></td>
-              <td><textarea data-field="g1-thoughts" aria-label="Green thoughts"></textarea></td>
-              <td><textarea data-field="g1-behavior" aria-label="Green behavior"></textarea></td>
-              <td><textarea data-field="g1-coping" aria-label="Green coping"></textarea></td>
+              <td><textarea data-field="g1-feeling" aria-label="Green feeling" placeholder="Calm, okay, steady"></textarea></td>
+              <td><textarea data-field="g1-physical" aria-label="Green physical" placeholder="How calm feels in your body"></textarea></td>
+              <td><textarea data-field="g1-thoughts" aria-label="Green thoughts" placeholder="Balanced thoughts"></textarea></td>
+              <td><textarea data-field="g1-behavior" aria-label="Green behavior" placeholder="What you do when regulated"></textarea></td>
+              <td><textarea data-field="g1-coping" aria-label="Green coping" placeholder="Keep it going"></textarea></td>
             </tr>
           </tbody>
         </table>
