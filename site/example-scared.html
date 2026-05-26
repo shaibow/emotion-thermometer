@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Example — Scared thermometer</title>
-    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="styles.css?v=zone-picker" />
   </head>
   <body data-page="example-scared">
     <header class="hero">
@@ -14,13 +14,22 @@
     </header>
 
     <nav class="no-print">
-      <a href="index.html">Home</a>
       <a href="your-thermometer.html">Your thermometer</a>
       <a href="example-angry.html">Example — angry</a>
       <a href="example-scared.html" aria-current="page">Example — scared</a>
     </nav>
 
     <form data-thermometer>
+      <section class="thermometer-intro">
+        <p class="eyebrow">How it works</p>
+        <h2>Pick one color to inspect.</h2>
+        <p>
+          Use the color buttons like a real thermometer reading. Select a zone to
+          see the example for that intensity, then edit the fields if you want to
+          personalize it.
+        </p>
+      </section>
+
       <div class="table-wrap">
         <table>
           <thead>
@@ -34,7 +43,7 @@
             </tr>
           </thead>
           <tbody>
-            <tr class="zone-red">
+            <tr class="zone-red" data-zone="red">
               <td>Red</td>
               <td><textarea data-field="r1-feeling">Panic</textarea></td>
               <td><textarea data-field="r1-physical">Panic attack</textarea></td>
@@ -42,7 +51,7 @@
               <td><textarea data-field="r1-behavior">Crying, hyperventilating</textarea></td>
               <td><textarea data-field="r1-coping">Take a short break away from others</textarea></td>
             </tr>
-            <tr class="zone-orange">
+            <tr class="zone-orange" data-zone="orange">
               <td>Orange</td>
               <td><textarea data-field="o1-feeling">Afraid</textarea></td>
               <td><textarea data-field="o1-physical">Clammy hands</textarea></td>
@@ -50,7 +59,7 @@
               <td><textarea data-field="o1-behavior">Fleeing</textarea></td>
               <td><textarea data-field="o1-coping">Drink water</textarea></td>
             </tr>
-            <tr class="zone-yellow">
+            <tr class="zone-yellow" data-zone="yellow">
               <td>Yellow</td>
               <td><textarea data-field="y1-feeling">Nervous</textarea></td>
               <td><textarea data-field="y1-physical">Tension in body</textarea></td>
@@ -58,7 +67,7 @@
               <td><textarea data-field="y1-behavior">Nervous, worrying</textarea></td>
               <td><textarea data-field="y1-coping">Listen to music</textarea></td>
             </tr>
-            <tr class="zone-green">
+            <tr class="zone-green" data-zone="green">
               <td>Green</td>
               <td><textarea data-field="g1-feeling">Comfortable in my skin</textarea></td>
               <td><textarea data-field="g1-physical">Relaxed</textarea></td>
@@ -76,6 +85,6 @@
       </div>
     </form>
 
-    <script src="app.js"></script>
+    <script src="app.js?v=zone-picker"></script>
   </body>
 </html>

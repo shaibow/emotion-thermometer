@@ -1,8 +1,18 @@
 const STORAGE_PREFIX = "emotion-thermometer:";
 const CELEBRATION_COLORS = ["#ff5a70", "#ff9f1c", "#ffd166", "#4ecdc4", "#7c5cff"];
+const ZONE_DETAILS = {
+  red: "Very intense",
+  orange: "Strong emotion",
+  yellow: "Early warning",
+  green: "Calm and steady",
+};
 
 function pageKey() {
   return STORAGE_PREFIX + document.body.dataset.page;
+}
+
+function zoneKey() {
+  return `${pageKey()}:selected-zone`;
 }
 
 function saveForm(form) {
@@ -49,14 +59,81 @@ function createProgressMeter(form) {
     </div>
     <p data-progress-copy>Start with any cell. Your edits save automatically.</p>
   `;
-  form.prepend(meter);
+  const anchor = form.querySelector(".meta-fields") || form.querySelector(".thermometer-intro");
+  if (anchor) {
+    anchor.insertAdjacentElement("afterend", meter);
+  } else {
+    form.prepend(meter);
+  }
 
   return {
+    element: meter,
     bar: meter.querySelector("[data-progress-bar]"),
     label: meter.querySelector("[data-progress-label]"),
     copy: meter.querySelector("[data-progress-copy]"),
     spark: meter.querySelector(".progress-spark"),
   };
+}
+
+function getZoneRows(form) {
+  return [...form.querySelectorAll("tr[data-zone]")];
+}
+
+function createZonePicker(form) {
+  const rows = getZoneRows(form);
+  if (!rows.length) return null;
+
+  const picker = document.createElement("section");
+  picker.className = "zone-picker no-print";
+  picker.setAttribute("aria-label", "Choose a thermometer color");
+  picker.innerHTML = `
+    <div>
+      <p class="eyebrow">Thermometer reading</p>
+      <h2>What color are you in right now?</h2>
+    </div>
+    <div class="zone-buttons" role="group" aria-label="Thermometer colors"></div>
+  `;
+
+  const buttons = picker.querySelector(".zone-buttons");
+  rows.forEach((row) => {
+    const zone = row.dataset.zone;
+    const label = row.cells[0]?.textContent.trim() || zone;
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = `zone-choice zone-${zone}`;
+    button.dataset.zoneChoice = zone;
+    button.setAttribute("aria-pressed", "false");
+    button.innerHTML = `<span>${label}</span><small>${ZONE_DETAILS[zone] || "Select zone"}</small>`;
+    buttons.appendChild(button);
+  });
+
+  return picker;
+}
+
+function selectZone(form, zone) {
+  const rows = getZoneRows(form);
+  const picker = form.querySelector(".zone-picker");
+  const tableWrap = form.querySelector(".table-wrap");
+  const activeZone = rows.some((row) => row.dataset.zone === zone) ? zone : "";
+
+  rows.forEach((row) => {
+    row.classList.toggle("is-selected", row.dataset.zone === activeZone);
+  });
+
+  picker?.querySelectorAll("[data-zone-choice]").forEach((button) => {
+    const isSelected = button.dataset.zoneChoice === activeZone;
+    button.classList.toggle("is-selected", isSelected);
+    button.setAttribute("aria-pressed", String(isSelected));
+  });
+
+  tableWrap?.classList.toggle("has-selected-zone", Boolean(activeZone));
+  form.dataset.activeZone = activeZone;
+
+  if (activeZone) {
+    localStorage.setItem(zoneKey(), activeZone);
+  } else {
+    localStorage.removeItem(zoneKey());
+  }
 }
 
 function celebrate(form) {
@@ -90,7 +167,7 @@ function updateProgress(form, meter, options = {}) {
   meter.spark.textContent = isComplete ? "Complete" : `${filled}/${fields.length} filled`;
   meter.copy.textContent = isComplete
     ? "Nice work. This thermometer is ready to print or revisit later."
-    : "Pick a zone and write whatever comes to mind. Short phrases count.";
+    : "Choose a color, then write short phrases for that thermometer reading.";
 
   if (options.celebrate && isComplete && form.dataset.wasComplete !== "true") {
     celebrate(form);
@@ -102,7 +179,18 @@ function updateProgress(form, meter, options = {}) {
 function wireForm(form) {
   loadForm(form);
   const meter = createProgressMeter(form);
+  const picker = createZonePicker(form);
+  if (picker) {
+    meter.element.insertAdjacentElement("afterend", picker);
+    picker.addEventListener("click", (event) => {
+      const button = event.target.closest("[data-zone-choice]");
+      if (!button) return;
+      selectZone(form, button.dataset.zoneChoice);
+    });
+  }
+
   updateProgress(form, meter, { celebrate: false });
+  selectZone(form, localStorage.getItem(zoneKey()) || "");
 
   getFields(form).forEach((field) => {
     field.addEventListener("focus", () => field.closest("tr")?.classList.add("is-active"));
@@ -118,6 +206,8 @@ function wireForm(form) {
     if (!confirm("Clear all fields on this page?")) return;
     form.reset();
     localStorage.removeItem(pageKey());
+    localStorage.removeItem(zoneKey());
+    selectZone(form, "");
     updateProgress(form, meter, { celebrate: false });
   });
 }
