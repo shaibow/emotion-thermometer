@@ -1,5 +1,8 @@
 const STORAGE_PREFIX = "emotion-thermometer:";
 const CELEBRATION_COLORS = ["#ff5a70", "#ff9f1c", "#ffd166", "#4ecdc4", "#7c5cff"];
+const SESSION_NAME_KEY = `${STORAGE_PREFIX}session-name`;
+const HISTORY_LIMIT = 8;
+const OTHER_EMOTION = "Other";
 const ZONE_DETAILS = {
   red: "Very intense",
   orange: "Strong emotion",
@@ -15,31 +18,128 @@ function zoneKey() {
   return `${pageKey()}:selected-zone`;
 }
 
-function saveForm(form) {
+function historyKey() {
+  return `${pageKey()}:feeling-history`;
+}
+
+function currentHistoryIdKey() {
+  return `${pageKey()}:current-history-id`;
+}
+
+function todayInputValue() {
+  const today = new Date();
+  today.setMinutes(today.getMinutes() - today.getTimezoneOffset());
+  return today.toISOString().slice(0, 10);
+}
+
+function readFormData(form) {
   const data = {};
   form.querySelectorAll("[data-field]").forEach((el) => {
     data[el.dataset.field] = el.value;
   });
+  return data;
+}
+
+function setStoredValue(form, field, value, data) {
+  if (field.tagName === "SELECT") {
+    const optionValues = [...field.options].map((option) => option.value);
+    if (optionValues.includes(value)) {
+      field.value = value;
+      return;
+    }
+
+    if (field.dataset.field === "emotion" && optionValues.includes(OTHER_EMOTION)) {
+      field.value = OTHER_EMOTION;
+      const otherField = form.querySelector("[data-field='emotionOther']");
+      if (otherField && !data.emotionOther) {
+        otherField.value = value;
+      }
+      return;
+    }
+  }
+
+  field.value = value;
+}
+
+function saveForm(form) {
+  const data = readFormData(form);
   localStorage.setItem(pageKey(), JSON.stringify(data));
+  return data;
 }
 
 function loadForm(form) {
   const raw = localStorage.getItem(pageKey());
-  if (!raw) return;
+  if (!raw) return {};
   try {
     const data = JSON.parse(raw);
     form.querySelectorAll("[data-field]").forEach((el) => {
-      if (data[el.dataset.field] != null) {
-        el.value = data[el.dataset.field];
+      let value = data[el.dataset.field];
+      if (el.dataset.field === "emotion" && value == null && data.theme != null) {
+        value = data.theme;
+      }
+      if (value != null) {
+        setStoredValue(form, el, value, data);
       }
     });
+    return data;
   } catch {
     /* ignore corrupt storage */
+    return {};
   }
 }
 
 function getFields(form) {
-  return [...form.querySelectorAll("[data-field]")];
+  return [...form.querySelectorAll("[data-field]")].filter((field) => !field.disabled);
+}
+
+function getProgressFields(form) {
+  return getFields(form).filter((field) => {
+    if (field.closest("[hidden]")) return false;
+    if (field.dataset.field === "name") return false;
+
+    const zoneRow = field.closest("tr[data-zone]");
+    return !zoneRow || zoneRow.classList.contains("is-selected");
+  });
+}
+
+function hydrateSessionName(form) {
+  const nameField = form.querySelector("[data-field='name']");
+  if (!nameField) return false;
+
+  const storedName = sessionStorage.getItem(SESSION_NAME_KEY);
+  if (storedName != null) {
+    nameField.value = storedName;
+    return true;
+  }
+
+  if (nameField.value.trim()) {
+    sessionStorage.setItem(SESSION_NAME_KEY, nameField.value);
+  }
+  return false;
+}
+
+function saveSessionName(form) {
+  const nameField = form.querySelector("[data-field='name']");
+  if (!nameField) return;
+  sessionStorage.setItem(SESSION_NAME_KEY, nameField.value);
+}
+
+function prefillDate(form) {
+  const dateField = form.querySelector("[data-field='date']");
+  if (!dateField || dateField.value) return false;
+  dateField.value = todayInputValue();
+  return true;
+}
+
+function updateEmotionOther(form) {
+  const emotionField = form.querySelector("[data-field='emotion']");
+  const otherWrap = form.querySelector("[data-emotion-other]");
+  const otherField = form.querySelector("[data-field='emotionOther']");
+  if (!emotionField || !otherWrap || !otherField) return;
+
+  const isOther = emotionField.value === OTHER_EMOTION;
+  otherWrap.hidden = !isOther;
+  otherField.disabled = !isOther;
 }
 
 function createProgressMeter(form) {
@@ -77,6 +177,147 @@ function createProgressMeter(form) {
 
 function getZoneRows(form) {
   return [...form.querySelectorAll("tr[data-zone]")];
+}
+
+function createHistoryPanel(form) {
+  if (!form.querySelector(".meta-fields")) return null;
+
+  const panel = document.createElement("section");
+  panel.className = "history-card no-print";
+  panel.dataset.historyCard = "";
+  panel.innerHTML = `
+    <div class="history-card-header">
+      <div>
+        <p class="eyebrow">Browser memory</p>
+        <h2>Past feeling inputs</h2>
+      </div>
+      <button type="button" data-action="clear-history">Clear history</button>
+    </div>
+    <div class="history-list" data-history-list></div>
+  `;
+
+  const actions = form.querySelector(".actions");
+  if (actions) {
+    actions.insertAdjacentElement("afterend", panel);
+  } else {
+    form.appendChild(panel);
+  }
+  return panel;
+}
+
+function getHistory() {
+  try {
+    const history = JSON.parse(localStorage.getItem(historyKey()) || "[]");
+    return Array.isArray(history) ? history : [];
+  } catch {
+    return [];
+  }
+}
+
+function setHistory(history) {
+  localStorage.setItem(historyKey(), JSON.stringify(history));
+}
+
+function getCurrentHistoryId() {
+  let id = localStorage.getItem(currentHistoryIdKey());
+  if (!id) {
+    id = window.crypto?.randomUUID ? window.crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    localStorage.setItem(currentHistoryIdKey(), id);
+  }
+  return id;
+}
+
+function getEmotionLabel(form, data = readFormData(form)) {
+  const emotion = (data.emotion || data.theme || "").trim();
+  if (emotion === OTHER_EMOTION) {
+    return (data.emotionOther || "").trim() || OTHER_EMOTION;
+  }
+  return emotion;
+}
+
+function getFeelingSnapshots(form, data = readFormData(form)) {
+  return getZoneRows(form)
+    .map((row) => {
+      const field = row.querySelector("textarea[data-field$='-feeling']");
+      const value = field ? (data[field.dataset.field] || "").trim() : "";
+      return {
+        zone: row.dataset.zone,
+        label: row.cells[0]?.textContent.trim() || row.dataset.zone,
+        value,
+      };
+    })
+    .filter((item) => item.value);
+}
+
+function saveFeelingHistory(form, data = readFormData(form)) {
+  if (!form.querySelector("[data-history-card]")) return;
+
+  const feelings = getFeelingSnapshots(form, data);
+  if (!feelings.length) {
+    renderHistory(form);
+    return;
+  }
+
+  const entry = {
+    id: getCurrentHistoryId(),
+    savedAt: new Date().toISOString(),
+    date: data.date || todayInputValue(),
+    name: (data.name || "").trim(),
+    emotion: getEmotionLabel(form, data),
+    activeZone: form.dataset.activeZone || "",
+    feelings,
+  };
+  const history = [entry, ...getHistory().filter((item) => item.id !== entry.id)].slice(0, HISTORY_LIMIT);
+  setHistory(history);
+  renderHistory(form);
+}
+
+function formatDate(value) {
+  if (!value) return "No date";
+  const date = new Date(`${value}T00:00:00`);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+}
+
+function renderHistory(form) {
+  const list = form.querySelector("[data-history-list]");
+  if (!list) return;
+
+  list.textContent = "";
+  const history = getHistory();
+  if (!history.length) {
+    const empty = document.createElement("p");
+    empty.className = "history-empty";
+    empty.textContent = "No saved feeling inputs yet. Start typing in the Feeling column and this browser will remember them.";
+    list.appendChild(empty);
+    return;
+  }
+
+  history.forEach((entry) => {
+    const article = document.createElement("article");
+    article.className = "history-entry";
+
+    const title = document.createElement("h3");
+    title.textContent = entry.emotion || "Untitled feeling";
+
+    const meta = document.createElement("p");
+    meta.className = "history-meta";
+    meta.textContent = [formatDate(entry.date), entry.name, entry.activeZone && `${entry.activeZone} zone`]
+      .filter(Boolean)
+      .join(" - ");
+
+    const chips = document.createElement("div");
+    chips.className = "feeling-chips";
+    entry.feelings.forEach((feeling) => {
+      const chip = document.createElement("span");
+      chip.className = `feeling-chip zone-${feeling.zone}`;
+      chip.textContent = `${feeling.label}: ${feeling.value}`;
+      chips.appendChild(chip);
+    });
+
+    article.append(title, meta, chips);
+    list.appendChild(article);
+  });
 }
 
 function createZonePicker(form) {
@@ -136,6 +377,156 @@ function selectZone(form, zone) {
   }
 }
 
+function collectStyles() {
+  return [...document.styleSheets]
+    .map((sheet) => {
+      try {
+        return [...sheet.cssRules].map((rule) => rule.cssText).join("\n");
+      } catch {
+        return "";
+      }
+    })
+    .join("\n");
+}
+
+function copyFormValues(sourceRoot, cloneRoot) {
+  const sourceControls = sourceRoot.querySelectorAll("input, textarea, select");
+  const cloneControls = cloneRoot.querySelectorAll("input, textarea, select");
+
+  sourceControls.forEach((sourceControl, index) => {
+    const cloneControl = cloneControls[index];
+    if (!cloneControl) return;
+
+    if (sourceControl.tagName === "TEXTAREA") {
+      cloneControl.textContent = sourceControl.value;
+      cloneControl.style.height = `${Math.max(sourceControl.scrollHeight, sourceControl.offsetHeight)}px`;
+      return;
+    }
+
+    if (sourceControl.tagName === "SELECT") {
+      [...cloneControl.options].forEach((option, optionIndex) => {
+        option.selected = optionIndex === sourceControl.selectedIndex;
+      });
+      return;
+    }
+
+    cloneControl.setAttribute("value", sourceControl.value);
+  });
+}
+
+function buildImageSvg(width, height) {
+  const clone = document.body.cloneNode(true);
+  copyFormValues(document.body, clone);
+  clone.querySelectorAll(".no-print").forEach((el) => el.remove());
+  clone.style.width = `${width}px`;
+  clone.style.minHeight = `${height}px`;
+  clone.style.margin = "0";
+  clone.setAttribute("xmlns", "http://www.w3.org/1999/xhtml");
+
+  const html = `
+    <html xmlns="http://www.w3.org/1999/xhtml">
+      <head>
+        <meta charset="utf-8" />
+        <style>
+          ${collectStyles()}
+          * { animation: none !important; transition: none !important; }
+          .no-print { display: none !important; }
+        </style>
+      </head>
+      ${clone.outerHTML}
+    </html>
+  `;
+
+  return `
+    <svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
+      <foreignObject width="100%" height="100%">${html}</foreignObject>
+    </svg>
+  `;
+}
+
+function renderSvgToPng(svg, width, height) {
+  return new Promise((resolve, reject) => {
+    const blob = new Blob([svg], { type: "image/svg+xml;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const image = new Image();
+
+    image.onload = () => {
+      const scale = Math.min(2, window.devicePixelRatio || 1);
+      const canvas = document.createElement("canvas");
+      canvas.width = width * scale;
+      canvas.height = height * scale;
+      const context = canvas.getContext("2d");
+      context.scale(scale, scale);
+      context.fillStyle = "#fff9f1";
+      context.fillRect(0, 0, width, height);
+      context.drawImage(image, 0, 0, width, height);
+      URL.revokeObjectURL(url);
+      canvas.toBlob((pngBlob) => {
+        if (pngBlob) {
+          resolve(pngBlob);
+        } else {
+          reject(new Error("The browser could not create the PNG file."));
+        }
+      }, "image/png");
+    };
+
+    image.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error("The browser could not render this page as an image."));
+    };
+
+    image.src = url;
+  });
+}
+
+function slugify(value) {
+  return (value || "emotion")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 40) || "emotion";
+}
+
+function downloadBlob(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+async function saveAsImage(form, button) {
+  const originalText = button.textContent;
+  button.disabled = true;
+  button.textContent = "Preparing image...";
+
+  try {
+    document.body.classList.add("exporting-image");
+    const width = Math.ceil(Math.max(document.body.scrollWidth, document.documentElement.clientWidth, 900));
+    const height = Math.ceil(Math.max(document.body.scrollHeight, document.documentElement.clientHeight));
+    const svg = buildImageSvg(width, height);
+    document.body.classList.remove("exporting-image");
+    const pngBlob = await renderSvgToPng(svg, width, height);
+    const data = readFormData(form);
+    const filename = `emotion-thermometer-${slugify(getEmotionLabel(form, data))}-${data.date || todayInputValue()}.png`;
+    downloadBlob(pngBlob, filename);
+    button.textContent = "Saved image";
+  } catch (error) {
+    document.body.classList.remove("exporting-image");
+    console.error(error);
+    alert("Sorry, this browser could not save the page as an image. You can still use Print / Save as PDF.");
+    button.textContent = originalText;
+  } finally {
+    window.setTimeout(() => {
+      button.disabled = false;
+      button.textContent = originalText;
+    }, 1200);
+  }
+}
+
 function celebrate(form) {
   const burst = document.createElement("div");
   burst.className = "celebration no-print";
@@ -157,7 +548,17 @@ function celebrate(form) {
 }
 
 function updateProgress(form, meter, options = {}) {
-  const fields = getFields(form);
+  const hasZoneRows = getZoneRows(form).length > 0;
+  if (hasZoneRows && !form.dataset.activeZone) {
+    meter.bar.style.width = "0%";
+    meter.label.textContent = "0%";
+    meter.spark.textContent = "Choose color";
+    meter.copy.textContent = "Choose your current color first, then fill in that thermometer reading.";
+    form.dataset.wasComplete = "false";
+    return;
+  }
+
+  const fields = getProgressFields(form);
   const filled = fields.filter((field) => field.value.trim().length > 0).length;
   const percent = fields.length ? Math.round((filled / fields.length) * 100) : 0;
   const isComplete = percent === 100;
@@ -178,37 +579,68 @@ function updateProgress(form, meter, options = {}) {
 
 function wireForm(form) {
   loadForm(form);
+  updateEmotionOther(form);
+  const shouldSaveInitialState = hydrateSessionName(form) || prefillDate(form);
+  if (shouldSaveInitialState) {
+    saveForm(form);
+  }
   const meter = createProgressMeter(form);
   const picker = createZonePicker(form);
+  createHistoryPanel(form);
   if (picker) {
     meter.element.insertAdjacentElement("afterend", picker);
     picker.addEventListener("click", (event) => {
       const button = event.target.closest("[data-zone-choice]");
       if (!button) return;
       selectZone(form, button.dataset.zoneChoice);
+      saveFeelingHistory(form);
+      updateProgress(form, meter, { celebrate: true });
     });
   }
 
-  updateProgress(form, meter, { celebrate: false });
   selectZone(form, localStorage.getItem(zoneKey()) || "");
+  updateProgress(form, meter, { celebrate: false });
+  renderHistory(form);
 
   getFields(form).forEach((field) => {
     field.addEventListener("focus", () => field.closest("tr")?.classList.add("is-active"));
     field.addEventListener("blur", () => field.closest("tr")?.classList.remove("is-active"));
   });
 
-  form.addEventListener("input", () => {
-    saveForm(form);
+  const handleFormChange = () => {
+    updateEmotionOther(form);
+    saveSessionName(form);
+    const data = saveForm(form);
+    saveFeelingHistory(form, data);
     updateProgress(form, meter, { celebrate: true });
-  });
+  };
+
+  form.addEventListener("input", handleFormChange);
+  form.addEventListener("change", handleFormChange);
 
   form.querySelector("[data-action=clear]")?.addEventListener("click", () => {
-    if (!confirm("Clear all fields on this page?")) return;
+    if (!confirm("Clear this worksheet draft? Your saved history and session name will stay.")) return;
     form.reset();
     localStorage.removeItem(pageKey());
     localStorage.removeItem(zoneKey());
+    localStorage.removeItem(currentHistoryIdKey());
+    updateEmotionOther(form);
+    hydrateSessionName(form);
+    prefillDate(form);
+    saveForm(form);
     selectZone(form, "");
     updateProgress(form, meter, { celebrate: false });
+  });
+
+  form.querySelector("[data-action=clear-history]")?.addEventListener("click", () => {
+    if (!confirm("Clear saved feeling history from this browser?")) return;
+    localStorage.removeItem(historyKey());
+    localStorage.removeItem(currentHistoryIdKey());
+    renderHistory(form);
+  });
+
+  form.querySelector("[data-action=save-image]")?.addEventListener("click", (event) => {
+    saveAsImage(form, event.currentTarget);
   });
 }
 

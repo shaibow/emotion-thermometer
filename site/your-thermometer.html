@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Your emotion thermometer</title>
-    <link rel="stylesheet" href="styles.css?v=zone-picker" />
+    <link rel="stylesheet" href="styles.css?v=memory-export" />
   </head>
   <body data-page="your-thermometer">
     <header class="hero">
@@ -33,7 +33,21 @@
       <div class="meta-fields">
         <label>
           Emotion / theme
-          <input type="text" data-field="theme" placeholder="e.g. Angry, Scared, Sad" />
+          <select data-field="emotion" aria-label="Emotion or theme">
+            <option value="">Choose an emotion</option>
+            <option>Angry</option>
+            <option>Scared</option>
+            <option>Sad</option>
+            <option>Worried</option>
+            <option>Frustrated</option>
+            <option>Excited</option>
+            <option>Happy</option>
+            <option>Other</option>
+          </select>
+        </label>
+        <label class="emotion-other" data-emotion-other hidden>
+          Other emotion
+          <input type="text" data-field="emotionOther" placeholder="Write your emotion" />
         </label>
         <label>
           Name (optional)
@@ -96,6 +110,7 @@
 
       <div class="actions no-print">
         <button type="button" class="primary" onclick="window.print()">Print / Save as PDF</button>
+        <button type="button" data-action="save-image">Save as image</button>
         <button type="button" data-action="clear">Clear this page</button>
       </div>
     </form>
@@ -110,6 +125,6 @@
       </ul>
     </section>
 
-    <script src="app.js?v=zone-picker"></script>
+    <script src="app.js?v=memory-export"></script>
   </body>
 </html>
