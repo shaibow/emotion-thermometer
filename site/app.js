@@ -460,106 +460,48 @@ function selectZone(form, zone) {
   updateAllStepProgress(form);
 }
 
-function collectStyles() {
-  return [...document.styleSheets]
-    .map((sheet) => {
-      try {
-        return [...sheet.cssRules].map((rule) => rule.cssText).join("\n");
-      } catch {
-        return "";
-      }
-    })
-    .join("\n");
-}
+async function saveAsPDF(form, button) {
+  const originalText = button.textContent;
+  button.disabled = true;
+  button.textContent = "Generating PDF…";
 
-function copyFormValues(sourceRoot, cloneRoot) {
-  const sourceControls = sourceRoot.querySelectorAll("input, textarea, select");
-  const cloneControls = cloneRoot.querySelectorAll("input, textarea, select");
+  try {
+    const data = readFormData(form);
+    const activeZone = form.dataset.activeZone || "";
 
-  sourceControls.forEach((sourceControl, index) => {
-    const cloneControl = cloneControls[index];
-    if (!cloneControl) return;
+    const response = await fetch("/api/generate-pdf", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ data, activeZone }),
+    });
 
-    if (sourceControl.tagName === "TEXTAREA") {
-      cloneControl.textContent = sourceControl.value;
-      cloneControl.style.height = `${Math.max(sourceControl.scrollHeight, sourceControl.offsetHeight)}px`;
-      return;
+    if (!response.ok) {
+      throw new Error(`Server returned ${response.status}`);
     }
 
-    if (sourceControl.tagName === "SELECT") {
-      [...cloneControl.options].forEach((option, optionIndex) => {
-        option.selected = optionIndex === sourceControl.selectedIndex;
-      });
-      return;
-    }
-
-    cloneControl.setAttribute("value", sourceControl.value);
-  });
-}
-
-function buildImageSvg(width, height) {
-  const clone = document.body.cloneNode(true);
-  copyFormValues(document.body, clone);
-  clone.querySelectorAll(".no-print").forEach((el) => el.remove());
-  clone.style.width = `${width}px`;
-  clone.style.minHeight = `${height}px`;
-  clone.style.margin = "0";
-  clone.setAttribute("xmlns", "http://www.w3.org/1999/xhtml");
-
-  const html = `
-    <html xmlns="http://www.w3.org/1999/xhtml">
-      <head>
-        <meta charset="utf-8" />
-        <style>
-          ${collectStyles()}
-          * { animation: none !important; transition: none !important; }
-          .no-print { display: none !important; }
-        </style>
-      </head>
-      ${clone.outerHTML}
-    </html>
-  `;
-
-  return `
-    <svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
-      <foreignObject width="100%" height="100%">${html}</foreignObject>
-    </svg>
-  `;
-}
-
-function renderSvgToPng(svg, width, height) {
-  return new Promise((resolve, reject) => {
-    const blob = new Blob([svg], { type: "image/svg+xml;charset=utf-8" });
+    const blob = await response.blob();
     const url = URL.createObjectURL(blob);
-    const image = new Image();
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `thermometer-${slugify(getEmotionLabel(form, data))}-${data.date || todayInputValue()}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
 
-    image.onload = () => {
-      const scale = Math.min(2, window.devicePixelRatio || 1);
-      const canvas = document.createElement("canvas");
-      canvas.width = width * scale;
-      canvas.height = height * scale;
-      const context = canvas.getContext("2d");
-      context.scale(scale, scale);
-      context.fillStyle = "#fff9f1";
-      context.fillRect(0, 0, width, height);
-      context.drawImage(image, 0, 0, width, height);
-      URL.revokeObjectURL(url);
-      canvas.toBlob((pngBlob) => {
-        if (pngBlob) {
-          resolve(pngBlob);
-        } else {
-          reject(new Error("The browser could not create the PNG file."));
-        }
-      }, "image/png");
-    };
+    button.textContent = "Downloaded ✓";
+  } catch (err) {
+    console.error("PDF error:", err);
+    alert("Could not generate PDF. Please use Print instead (Ctrl+P / ⌘P).");
+    button.textContent = originalText;
+    button.disabled = false;
+    return;
+  }
 
-    image.onerror = () => {
-      URL.revokeObjectURL(url);
-      reject(new Error("The browser could not render this page as an image."));
-    };
-
-    image.src = url;
-  });
+  window.setTimeout(() => {
+    button.disabled = false;
+    button.textContent = originalText;
+  }, 2000);
 }
 
 function slugify(value) {
@@ -570,45 +512,6 @@ function slugify(value) {
     .slice(0, 40) || "emotion";
 }
 
-function downloadBlob(blob, filename) {
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = filename;
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
-}
-
-async function saveAsImage(form, button) {
-  const originalText = button.textContent;
-  button.disabled = true;
-  button.textContent = "Preparing image...";
-
-  try {
-    document.body.classList.add("exporting-image");
-    const width = Math.ceil(Math.max(document.body.scrollWidth, document.documentElement.clientWidth, 900));
-    const height = Math.ceil(Math.max(document.body.scrollHeight, document.documentElement.clientHeight));
-    const svg = buildImageSvg(width, height);
-    document.body.classList.remove("exporting-image");
-    const pngBlob = await renderSvgToPng(svg, width, height);
-    const data = readFormData(form);
-    const filename = `emotion-thermometer-${slugify(getEmotionLabel(form, data))}-${data.date || todayInputValue()}.png`;
-    downloadBlob(pngBlob, filename);
-    button.textContent = "Saved image";
-  } catch (error) {
-    document.body.classList.remove("exporting-image");
-    console.error(error);
-    alert("Sorry, this browser could not save the page as an image. You can still use Print / Save as PDF.");
-    button.textContent = originalText;
-  } finally {
-    window.setTimeout(() => {
-      button.disabled = false;
-      button.textContent = originalText;
-    }, 1200);
-  }
-}
 
 function celebrate(form) {
   const burst = document.createElement("div");
@@ -724,8 +627,8 @@ function wireForm(form) {
     renderHistory(form);
   });
 
-  form.querySelector("[data-action=save-image]")?.addEventListener("click", (event) => {
-    saveAsImage(form, event.currentTarget);
+  form.querySelector("[data-action=save-pdf]")?.addEventListener("click", (event) => {
+    saveAsPDF(form, event.currentTarget);
   });
 }
 

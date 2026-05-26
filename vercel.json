@@ -1,3 +1,8 @@
 {
-  "outputDirectory": "site"
+  "outputDirectory": "site",
+  "functions": {
+    "api/generate-pdf.js": {
+      "memory": 512
+    }
+  }
 }
