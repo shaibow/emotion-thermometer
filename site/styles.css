@@ -76,6 +76,7 @@ body::before {
   background: conic-gradient(from 90deg, var(--red), var(--orange), var(--yellow), var(--green), var(--red));
   opacity: 0.22;
   animation: spin-soft 18s linear infinite;
+  pointer-events: none;
 }
 
 .eyebrow {
