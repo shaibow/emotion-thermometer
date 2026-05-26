@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Your emotion thermometer</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body data-page="your-thermometer">
+    <header>
+      <h1>Your emotion thermometer</h1>
+      <p class="subtitle">Blank template — fill in every cell. Progress saves in this browser.</p>
+    </header>
+
+    <nav class="no-print">
+      <a href="index.html">Home</a>
+      <a href="your-thermometer.html" aria-current="page">Your thermometer</a>
+      <a href="example-angry.html">Example — angry</a>
+      <a href="example-scared.html">Example — scared</a>
+    </nav>
+
+    <form data-thermometer>
+      <div class="meta-fields">
+        <label>
+          Emotion / theme
+          <input type="text" data-field="theme" placeholder="e.g. Angry, Scared, Sad" />
+        </label>
+        <label>
+          Name (optional)
+          <input type="text" data-field="name" placeholder="Your name" />
+        </label>
+        <label>
+          Date
+          <input type="date" data-field="date" />
+        </label>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Zone</th>
+              <th>Feeling</th>
+              <th>Physical signals</th>
+              <th>Thoughts</th>
+              <th>Behavior</th>
+              <th>What can I do?</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="zone-red">
+              <td>Red</td>
+              <td><textarea data-field="r1-feeling" aria-label="Red row 1 feeling"></textarea></td>
+              <td><textarea data-field="r1-physical" aria-label="Red row 1 physical"></textarea></td>
+              <td><textarea data-field="r1-thoughts" aria-label="Red row 1 thoughts"></textarea></td>
+              <td><textarea data-field="r1-behavior" aria-label="Red row 1 behavior"></textarea></td>
+              <td><textarea data-field="r1-coping" aria-label="Red row 1 coping"></textarea></td>
+            </tr>
+            <tr class="zone-red">
+              <td>Red</td>
+              <td><textarea data-field="r2-feeling" aria-label="Red row 2 feeling"></textarea></td>
+              <td><textarea data-field="r2-physical" aria-label="Red row 2 physical"></textarea></td>
+              <td><textarea data-field="r2-thoughts" aria-label="Red row 2 thoughts"></textarea></td>
+              <td><textarea data-field="r2-behavior" aria-label="Red row 2 behavior"></textarea></td>
+              <td><textarea data-field="r2-coping" aria-label="Red row 2 coping"></textarea></td>
+            </tr>
+            <tr class="zone-orange">
+              <td>Orange</td>
+              <td><textarea data-field="o1-feeling" aria-label="Orange row 1 feeling"></textarea></td>
+              <td><textarea data-field="o1-physical" aria-label="Orange row 1 physical"></textarea></td>
+              <td><textarea data-field="o1-thoughts" aria-label="Orange row 1 thoughts"></textarea></td>
+              <td><textarea data-field="o1-behavior" aria-label="Orange row 1 behavior"></textarea></td>
+              <td><textarea data-field="o1-coping" aria-label="Orange row 1 coping"></textarea></td>
+            </tr>
+            <tr class="zone-orange">
+              <td>Orange</td>
+              <td><textarea data-field="o2-feeling" aria-label="Orange row 2 feeling"></textarea></td>
+              <td><textarea data-field="o2-physical" aria-label="Orange row 2 physical"></textarea></td>
+              <td><textarea data-field="o2-thoughts" aria-label="Orange row 2 thoughts"></textarea></td>
+              <td><textarea data-field="o2-behavior" aria-label="Orange row 2 behavior"></textarea></td>
+              <td><textarea data-field="o2-coping" aria-label="Orange row 2 coping"></textarea></td>
+            </tr>
+            <tr class="zone-yellow">
+              <td>Yellow</td>
+              <td><textarea data-field="y1-feeling" aria-label="Yellow feeling"></textarea></td>
+              <td><textarea data-field="y1-physical" aria-label="Yellow physical"></textarea></td>
+              <td><textarea data-field="y1-thoughts" aria-label="Yellow thoughts"></textarea></td>
+              <td><textarea data-field="y1-behavior" aria-label="Yellow behavior"></textarea></td>
+              <td><textarea data-field="y1-coping" aria-label="Yellow coping"></textarea></td>
+            </tr>
+            <tr class="zone-green">
+              <td>Green</td>
+              <td><textarea data-field="g1-feeling" aria-label="Green feeling"></textarea></td>
+              <td><textarea data-field="g1-physical" aria-label="Green physical"></textarea></td>
+              <td><textarea data-field="g1-thoughts" aria-label="Green thoughts"></textarea></td>
+              <td><textarea data-field="g1-behavior" aria-label="Green behavior"></textarea></td>
+              <td><textarea data-field="g1-coping" aria-label="Green coping"></textarea></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="actions no-print">
+        <button type="button" class="primary" onclick="window.print()">Print / Save as PDF</button>
+        <button type="button" data-action="clear">Clear this page</button>
+      </div>
+    </form>
+
+    <section class="guide">
+      <h2>Color guide</h2>
+      <ul>
+        <li><strong>Red</strong> — very intense; hard to think clearly</li>
+        <li><strong>Orange</strong> — strong emotion; still manageable with support</li>
+        <li><strong>Yellow</strong> — mild discomfort; good moment to act early</li>
+        <li><strong>Green</strong> — calm; you feel okay and regulated</li>
+      </ul>
+    </section>
+
+    <script src="app.js"></script>
+  </body>
+</html>

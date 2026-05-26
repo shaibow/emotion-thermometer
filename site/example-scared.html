@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Example — Scared thermometer</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body data-page="example-scared">
+    <header>
+      <h1>Example emotion thermometer — Scared</h1>
+      <p class="subtitle">Translated from <em>Voorbeeld Thermometer</em> (fear section). You can edit any field.</p>
+    </header>
+
+    <nav class="no-print">
+      <a href="index.html">Home</a>
+      <a href="your-thermometer.html">Your thermometer</a>
+      <a href="example-angry.html">Example — angry</a>
+      <a href="example-scared.html" aria-current="page">Example — scared</a>
+    </nav>
+
+    <form data-thermometer>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Zone</th>
+              <th>Feeling</th>
+              <th>Physical signals</th>
+              <th>Thoughts</th>
+              <th>Behavior</th>
+              <th>What can I do?</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="zone-red">
+              <td>Red</td>
+              <td><textarea data-field="r1-feeling">Panic</textarea></td>
+              <td><textarea data-field="r1-physical">Panic attack</textarea></td>
+              <td><textarea data-field="r1-thoughts">I won't survive this</textarea></td>
+              <td><textarea data-field="r1-behavior">Crying, hyperventilating</textarea></td>
+              <td><textarea data-field="r1-coping">Take a short break away from others</textarea></td>
+            </tr>
+            <tr class="zone-red">
+              <td>Red</td>
+              <td><textarea data-field="r2-feeling">Very scared</textarea></td>
+              <td><textarea data-field="r2-physical">Short of breath</textarea></td>
+              <td><textarea data-field="r2-thoughts">I have to get out of here</textarea></td>
+              <td><textarea data-field="r2-behavior">Freezing, crying fits</textarea></td>
+              <td><textarea data-field="r2-coping">Look for a distraction</textarea></td>
+            </tr>
+            <tr class="zone-orange">
+              <td>Orange</td>
+              <td><textarea data-field="o1-feeling">Afraid</textarea></td>
+              <td><textarea data-field="o1-physical">Clammy hands</textarea></td>
+              <td><textarea data-field="o1-thoughts">I don't want this; this is scary</textarea></td>
+              <td><textarea data-field="o1-behavior">Fleeing</textarea></td>
+              <td><textarea data-field="o1-coping">Drink water</textarea></td>
+            </tr>
+            <tr class="zone-orange">
+              <td>Orange</td>
+              <td><textarea data-field="o2-feeling">A little afraid</textarea></td>
+              <td><textarea data-field="o2-physical">Tension, tired, or overactive</textarea></td>
+              <td><textarea data-field="o2-thoughts">It's becoming too much for me</textarea></td>
+              <td><textarea data-field="o2-behavior">Restless behavior or very quiet</textarea></td>
+              <td><textarea data-field="o2-coping">Talk about it with someone</textarea></td>
+            </tr>
+            <tr class="zone-yellow">
+              <td>Yellow</td>
+              <td><textarea data-field="y1-feeling">Nervous</textarea></td>
+              <td><textarea data-field="y1-physical">Tension in body</textarea></td>
+              <td><textarea data-field="y1-thoughts">This is exciting</textarea></td>
+              <td><textarea data-field="y1-behavior">Nervous, worrying</textarea></td>
+              <td><textarea data-field="y1-coping">Listen to music</textarea></td>
+            </tr>
+            <tr class="zone-green">
+              <td>Green</td>
+              <td><textarea data-field="g1-feeling">Comfortable in my skin</textarea></td>
+              <td><textarea data-field="g1-physical">Relaxed</textarea></td>
+              <td><textarea data-field="g1-thoughts">I feel good</textarea></td>
+              <td><textarea data-field="g1-behavior">Tidy, taking care of myself</textarea></td>
+              <td><textarea data-field="g1-coping">Enjoy the day</textarea></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="actions no-print">
+        <button type="button" class="primary" onclick="window.print()">Print / Save as PDF</button>
+        <button type="button" data-action="clear">Clear saved edits</button>
+      </div>
+    </form>
+
+    <script src="app.js"></script>
+  </body>
+</html>
