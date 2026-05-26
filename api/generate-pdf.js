@@ -1,7 +1,35 @@
-// Vercel serverless function — generates a styled PDF from form data
-// NOTE: pdfkit only accepts hex strings ("#rrggbb") or plain color names,
-//       NOT CSS "rgb()" strings. All colors here are hex.
+// Vercel serverless function — generates a styled PDF from form data.
+// pdfkit only accepts hex strings ("#rrggbb"), NOT CSS "rgb()" strings.
 const PDFDocument = require("pdfkit");
+
+// Zone ID → raw field prefix (r1, o1, y1, g1)
+const ZONE_PREFIX = { red: "r1", orange: "o1", yellow: "y1", green: "g1" };
+
+// Convert a history entry (stored in localStorage) back to raw form data
+// so the same buildPDF() function can render it.
+function historyEntryToPageArgs(entry) {
+  const data = {
+    emotion:      entry.emotion || "",
+    emotionOther: "",
+    name:         entry.name   || "",
+    date:         entry.date   || "",
+  };
+  (entry.zones || []).forEach((zone) => {
+    const prefix = ZONE_PREFIX[zone.zone];
+    if (!prefix) return;
+    (zone.fields || []).forEach((field) => {
+      data[`${prefix}-${field.key}`] = field.value || "";
+    });
+  });
+  // Backward-compat: old entries used `feelings` array with just `value` (feeling only)
+  if (!entry.zones && Array.isArray(entry.feelings)) {
+    entry.feelings.forEach((f) => {
+      const prefix = ZONE_PREFIX[f.zone];
+      if (prefix) data[`${prefix}-feeling`] = f.value || "";
+    });
+  }
+  return { data, activeZone: entry.activeZone || "" };
+}
 
 const ZONES = [
   { id: "red",    prefix: "r1", label: "Red",    bg: "#fef2f2", ink: "#991b1b", line: "#fca5a5" },
@@ -202,31 +230,47 @@ module.exports = function handler(req, res) {
   }
 
   try {
-    const { data = {}, activeZone = "" } = req.body || {};
+    const body = req.body || {};
 
-    // A4 landscape
+    // Build list of pages: [{ data, activeZone }, ...]
+    let pages;
+    let filename = "thermometer.pdf";
+
+    if (Array.isArray(body.entries) && body.entries.length > 0) {
+      // Multi-page: one page per saved history entry
+      pages = body.entries.map(historyEntryToPageArgs);
+      filename = `thermometer-history-${new Date().toISOString().slice(0, 10)}.pdf`;
+    } else if (body.entry) {
+      // Single saved history entry
+      const args = historyEntryToPageArgs(body.entry);
+      pages = [args];
+      const slug = (body.entry.emotion || "emotion").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40) || "emotion";
+      filename = `thermometer-${slug}-${body.entry.date || new Date().toISOString().slice(0, 10)}.pdf`;
+    } else {
+      // Raw form data (current-session export)
+      const { data = {}, activeZone = "" } = body;
+      pages = [{ data, activeZone }];
+      const slug = (data.emotion || "emotion").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40) || "emotion";
+      filename = `thermometer-${slug}-${data.date || new Date().toISOString().slice(0, 10)}.pdf`;
+    }
+
     const doc    = new PDFDocument({ size: "A4", layout: "landscape", margin: 0, compress: true });
     const chunks = [];
 
     doc.on("data", (chunk) => chunks.push(chunk));
     doc.on("end", () => {
       const pdf = Buffer.concat(chunks);
-
-      const emotionSlug = (data.emotion || "emotion")
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, "-")
-        .replace(/^-+|-+$/g, "")
-        .slice(0, 40) || "emotion";
-      const dateSlug = data.date || new Date().toISOString().slice(0, 10);
-      const filename = `thermometer-${emotionSlug}-${dateSlug}.pdf`;
-
       res.setHeader("Content-Type", "application/pdf");
       res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
       res.setHeader("Content-Length", String(pdf.length));
       res.end(pdf);
     });
 
-    buildPDF(doc, data, activeZone);
+    pages.forEach(({ data, activeZone }, i) => {
+      if (i > 0) doc.addPage();
+      buildPDF(doc, data, activeZone);
+    });
+
     doc.end();
   } catch (err) {
     console.error("PDF generation error:", err);

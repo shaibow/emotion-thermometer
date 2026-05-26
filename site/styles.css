@@ -589,6 +589,35 @@ body.exporting-image .no-print {
   margin-bottom: 1rem;
 }
 
+.history-header-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.history-dl-all-btn {
+  padding: 0.42rem 0.85rem;
+  border-radius: 999px;
+  border: 1px solid rgba(91, 61, 245, 0.3);
+  background: rgba(91, 61, 245, 0.07);
+  color: #5b3df5;
+  font-size: 0.8rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: background 150ms, transform 150ms;
+}
+
+.history-dl-all-btn:hover {
+  background: rgba(91, 61, 245, 0.14);
+  transform: translateY(-1px);
+}
+
+.history-dl-all-btn:disabled {
+  opacity: 0.5;
+  cursor: wait;
+  transform: none;
+}
+
 .history-card h2,
 .history-entry h3 {
   margin: 0;
@@ -614,6 +643,29 @@ body.exporting-image .no-print {
   align-items: flex-start;
   justify-content: space-between;
   gap: 0.5rem;
+}
+
+.history-dl-btn {
+  flex-shrink: 0;
+  padding: 0.25rem 0.6rem;
+  border: 1px solid rgba(91, 61, 245, 0.25);
+  border-radius: 999px;
+  background: rgba(91, 61, 245, 0.07);
+  color: #5b3df5;
+  font-size: 0.75rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: background 150ms;
+  white-space: nowrap;
+}
+
+.history-dl-btn:hover {
+  background: rgba(91, 61, 245, 0.14);
+}
+
+.history-dl-btn:disabled {
+  opacity: 0.5;
+  cursor: wait;
 }
 
 .history-remove-btn {
@@ -736,8 +788,10 @@ tr[data-zone].is-selected textarea:not(:disabled) {
 .celebration {
   pointer-events: none;
   position: fixed;
-  inset: 50% auto auto 50%;
+  left: 50%;
+  top: 50%;
   z-index: 20;
+  transform: translate(-50%, -50%);
 }
 
 .confetti-piece {

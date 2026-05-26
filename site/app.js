@@ -198,7 +198,10 @@ function createHistoryPanel(form) {
         <p class="eyebrow">Browser memory</p>
         <h2>Past feeling inputs</h2>
       </div>
-      <button type="button" data-action="clear-history">Clear history</button>
+      <div class="history-header-actions">
+        <button type="button" class="history-dl-all-btn" data-action="download-all-history">Download all PDF</button>
+        <button type="button" data-action="clear-history">Clear history</button>
+      </div>
     </div>
     <div class="history-list" data-history-list></div>
   `;
@@ -322,6 +325,16 @@ function renderHistory(form) {
     const title = document.createElement("h3");
     title.textContent = entry.emotion || "Untitled feeling";
 
+    const dlBtn = document.createElement("button");
+    dlBtn.type = "button";
+    dlBtn.className = "history-dl-btn";
+    dlBtn.setAttribute("aria-label", "Download this entry as PDF");
+    dlBtn.textContent = "PDF ↓";
+    dlBtn.addEventListener("click", () => {
+      const filename = `thermometer-${slugify(entry.emotion || "emotion")}-${entry.date || todayInputValue()}.pdf`;
+      fetchAndDownloadPDF({ entry }, filename, dlBtn);
+    });
+
     const removeBtn = document.createElement("button");
     removeBtn.type = "button";
     removeBtn.className = "history-remove-btn";
@@ -332,7 +345,7 @@ function renderHistory(form) {
       renderHistory(form);
     });
 
-    header.append(title, removeBtn);
+    header.append(title, dlBtn, removeBtn);
 
     const meta = document.createElement("p");
     meta.className = "history-meta";
@@ -460,48 +473,45 @@ function selectZone(form, zone) {
   updateAllStepProgress(form);
 }
 
-async function saveAsPDF(form, button) {
-  const originalText = button.textContent;
+async function fetchAndDownloadPDF(payload, filename, button) {
+  const orig = button.textContent;
   button.disabled = true;
-  button.textContent = "Generating PDF…";
-
+  button.textContent = "Generating…";
   try {
-    const data = readFormData(form);
-    const activeZone = form.dataset.activeZone || "";
-
     const response = await fetch("/api/generate-pdf", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ data, activeZone }),
+      body: JSON.stringify(payload),
     });
-
-    if (!response.ok) {
-      throw new Error(`Server returned ${response.status}`);
-    }
-
+    if (!response.ok) throw new Error(`Status ${response.status}`);
     const blob = await response.blob();
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `thermometer-${slugify(getEmotionLabel(form, data))}-${data.date || todayInputValue()}.pdf`;
+    a.download = filename;
     document.body.appendChild(a);
     a.click();
     a.remove();
     window.setTimeout(() => URL.revokeObjectURL(url), 1000);
-
     button.textContent = "Downloaded ✓";
   } catch (err) {
     console.error("PDF error:", err);
-    alert("Could not generate PDF. Please use Print instead (Ctrl+P / ⌘P).");
-    button.textContent = originalText;
+    alert("Could not generate PDF. Please try again.");
+    button.textContent = orig;
     button.disabled = false;
     return;
   }
-
   window.setTimeout(() => {
     button.disabled = false;
-    button.textContent = originalText;
+    button.textContent = orig;
   }, 2000);
+}
+
+async function saveAsPDF(form, button) {
+  const data = readFormData(form);
+  const activeZone = form.dataset.activeZone || "";
+  const filename = `thermometer-${slugify(getEmotionLabel(form, data))}-${data.date || todayInputValue()}.pdf`;
+  await fetchAndDownloadPDF({ data, activeZone }, filename, button);
 }
 
 function slugify(value) {
@@ -513,24 +523,30 @@ function slugify(value) {
 }
 
 
-function celebrate(form) {
+function celebrate(anchorEl) {
   const burst = document.createElement("div");
   burst.className = "celebration no-print";
   burst.setAttribute("aria-hidden", "true");
 
-  for (let index = 0; index < 32; index += 1) {
+  if (anchorEl) {
+    const rect = anchorEl.getBoundingClientRect();
+    burst.style.left = `${rect.left + rect.width / 2}px`;
+    burst.style.top  = `${rect.top + rect.height / 2}px`;
+  }
+
+  for (let index = 0; index < 40; index += 1) {
     const piece = document.createElement("span");
     piece.className = "confetti-piece";
-    piece.style.setProperty("--x", `${Math.round((Math.random() - 0.5) * 280)}px`);
-    piece.style.setProperty("--y", `${Math.round(Math.random() * -180 - 60)}px`);
+    piece.style.setProperty("--x", `${Math.round((Math.random() - 0.5) * 320)}px`);
+    piece.style.setProperty("--y", `${Math.round(Math.random() * -220 - 40)}px`);
     piece.style.setProperty("--r", `${Math.round(Math.random() * 540)}deg`);
-    piece.style.setProperty("--delay", `${Math.random() * 0.18}s`);
+    piece.style.setProperty("--delay", `${Math.random() * 0.22}s`);
     piece.style.background = CELEBRATION_COLORS[index % CELEBRATION_COLORS.length];
     burst.appendChild(piece);
   }
 
-  form.appendChild(burst);
-  window.setTimeout(() => burst.remove(), 1500);
+  document.body.appendChild(burst);
+  window.setTimeout(() => burst.remove(), 1600);
 }
 
 function updateProgress(form, meter, options = {}) {
@@ -557,7 +573,7 @@ function updateProgress(form, meter, options = {}) {
     : "Choose a color, then write short phrases for that thermometer reading.";
 
   if (options.celebrate && isComplete && form.dataset.wasComplete !== "true") {
-    celebrate(form);
+    celebrate(options.anchorEl || null);
   }
 
   form.dataset.wasComplete = isComplete ? "true" : "false";
@@ -627,12 +643,38 @@ function wireForm(form) {
     renderHistory(form);
   });
 
+  form.querySelector("[data-action=download-all-history]")?.addEventListener("click", (event) => {
+    const history = getHistory();
+    if (!history.length) return;
+    const filename = `thermometer-history-${todayInputValue()}.pdf`;
+    fetchAndDownloadPDF({ entries: history }, filename, event.currentTarget);
+  });
+
   form.querySelector("[data-action=save]")?.addEventListener("click", (event) => {
     const btn = event.currentTarget;
+
+    // Snapshot data before clearing
     const data = saveForm(form);
     saveFeelingHistory(form, data);
-    updateProgress(form, meter, { celebrate: true });
 
+    // Celebrate near the button
+    celebrate(btn);
+
+    // Clear the form so it's ready for a fresh entry
+    form.reset();
+    localStorage.removeItem(pageKey());
+    localStorage.removeItem(zoneKey());
+    localStorage.removeItem(currentHistoryIdKey());
+    updateEmotionOther(form);
+    hydrateSessionName(form);
+    prefillDate(form);
+    saveForm(form);
+    selectZone(form, "");
+    updateAllStepProgress(form);
+    updateProgress(form, meter, { celebrate: false });
+    renderHistory(form);
+
+    // Button feedback
     const orig = btn.textContent;
     btn.textContent = "Saved ✓";
     btn.disabled = true;
