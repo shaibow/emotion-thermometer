@@ -113,14 +113,14 @@ function hydrateSessionName(form) {
   const nameField = form.querySelector("[data-field='name']");
   if (!nameField) return false;
 
-  const storedName = sessionStorage.getItem(SESSION_NAME_KEY);
+  const storedName = localStorage.getItem(SESSION_NAME_KEY);
   if (storedName != null) {
     nameField.value = storedName;
     return true;
   }
 
   if (nameField.value.trim()) {
-    sessionStorage.setItem(SESSION_NAME_KEY, nameField.value);
+    localStorage.setItem(SESSION_NAME_KEY, nameField.value);
   }
   return false;
 }
@@ -128,7 +128,7 @@ function hydrateSessionName(form) {
 function saveSessionName(form) {
   const nameField = form.querySelector("[data-field='name']");
   if (!nameField) return;
-  sessionStorage.setItem(SESSION_NAME_KEY, nameField.value);
+  localStorage.setItem(SESSION_NAME_KEY, nameField.value);
 }
 
 function prefillDate(form) {
@@ -288,6 +288,11 @@ function saveFeelingHistory(form, data = readFormData(form)) {
   const history = [entry, ...getHistory().filter((item) => item.id !== entry.id)].slice(0, HISTORY_LIMIT);
   setHistory(history);
   renderHistory(form);
+  // Cloud sync (appState is defined later in this file; safe because this
+  // function is only called after DOMContentLoaded and appState is initialized).
+  if (typeof appState !== "undefined" && appState.user) {
+    pushLogsToCloud(history);
+  }
 }
 
 function formatDate(value) {
@@ -297,8 +302,11 @@ function formatDate(value) {
   return date.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
 }
 
-function removeHistoryEntry(id) {
+async function removeHistoryEntry(id) {
   setHistory(getHistory().filter((entry) => entry.id !== id));
+  if (typeof appState !== "undefined" && appState.user) {
+    await deleteLogFromCloud(id);
+  }
 }
 
 function renderHistory(form) {
@@ -340,8 +348,9 @@ function renderHistory(form) {
     removeBtn.className = "history-remove-btn";
     removeBtn.setAttribute("aria-label", "Remove this entry");
     removeBtn.textContent = "×";
-    removeBtn.addEventListener("click", () => {
-      removeHistoryEntry(entry.id);
+    removeBtn.addEventListener("click", async () => {
+      removeBtn.disabled = true;
+      await removeHistoryEntry(entry.id);
       renderHistory(form);
     });
 
@@ -636,10 +645,24 @@ function wireForm(form) {
     updateProgress(form, meter, { celebrate: false });
   });
 
-  form.querySelector("[data-action=clear-history]")?.addEventListener("click", () => {
-    if (!confirm("Clear saved feeling history from this browser?")) return;
+  form.querySelector("[data-action=clear-history]")?.addEventListener("click", async () => {
+    const cloudMsg = typeof appState !== "undefined" && appState.user
+      ? "Clear saved feeling history from both this browser and the cloud?"
+      : "Clear saved feeling history from this browser?";
+    if (!confirm(cloudMsg)) return;
     localStorage.removeItem(historyKey());
     localStorage.removeItem(currentHistoryIdKey());
+    if (typeof appState !== "undefined" && appState.user) {
+      try {
+        const page = document.body.dataset.page;
+        // Fetch remaining IDs and delete each from cloud
+        const res = await fetch(`/api/logs?page=${encodeURIComponent(page)}`, { credentials: "same-origin" });
+        if (res.ok) {
+          const { entries } = await res.json();
+          await Promise.all((entries || []).map((e) => deleteLogFromCloud(e.id)));
+        }
+      } catch { /* silent */ }
+    }
     renderHistory(form);
   });
 
@@ -689,4 +712,154 @@ function wireForm(form) {
   });
 }
 
-document.querySelectorAll("form[data-thermometer]").forEach(wireForm);
+// ─── CLOUD SYNC & AUTH ───────────────────────────────────────────────────────
+
+const appState = { user: null };
+
+async function fetchCurrentUser() {
+  try {
+    const res = await fetch("/api/auth/me", { credentials: "same-origin" });
+    if (!res.ok) return null;
+    const { user } = await res.json();
+    return user || null;
+  } catch {
+    return null;
+  }
+}
+
+async function pushLogsToCloud(entries) {
+  if (!appState.user || !entries.length) return;
+  try {
+    await fetch("/api/logs", {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ entries, page: document.body.dataset.page }),
+    });
+  } catch {
+    /* silent — localStorage is still intact */
+  }
+}
+
+async function deleteLogFromCloud(id) {
+  if (!appState.user) return;
+  try {
+    await fetch(`/api/logs?id=${encodeURIComponent(id)}`, {
+      method: "DELETE",
+      credentials: "same-origin",
+    });
+  } catch {
+    /* silent */
+  }
+}
+
+async function fetchLogsFromCloud() {
+  if (!appState.user) return null;
+  try {
+    const page = document.body.dataset.page;
+    const res = await fetch(`/api/logs?page=${encodeURIComponent(page)}`, {
+      credentials: "same-origin",
+    });
+    if (!res.ok) return null;
+    const { entries } = await res.json();
+    return Array.isArray(entries) ? entries : null;
+  } catch {
+    return null;
+  }
+}
+
+function mergeAndStoreHistory(localEntries, cloudEntries) {
+  const byId = new Map();
+  localEntries.forEach((e) => byId.set(e.id, e));
+  cloudEntries.forEach((e) => byId.set(e.id, e));
+  const merged = [...byId.values()]
+    .sort((a, b) => (b.savedAt || "").localeCompare(a.savedAt || ""))
+    .slice(0, HISTORY_LIMIT);
+  setHistory(merged);
+  return merged;
+}
+
+function updateAuthWidget(user) {
+  const loading = document.getElementById("auth-loading");
+  const loginBtn = document.getElementById("btn-login");
+  const userEl = document.getElementById("auth-user");
+  const nameEl = document.getElementById("auth-name");
+  const avatarEl = document.getElementById("auth-avatar");
+  const subtitle = document.getElementById("hero-subtitle");
+
+  if (loading) loading.hidden = true;
+
+  if (user) {
+    if (loginBtn) loginBtn.hidden = true;
+    if (userEl) userEl.hidden = false;
+    if (nameEl) nameEl.textContent = user.name || user.email;
+    if (avatarEl && user.avatar) {
+      avatarEl.src = user.avatar;
+      avatarEl.alt = user.name || "";
+    }
+    if (subtitle) subtitle.textContent = "Your history is saved to the cloud and accessible across devices.";
+    document.querySelectorAll(".history-card .eyebrow").forEach((el) => {
+      el.textContent = "Cloud history";
+    });
+  } else {
+    if (loginBtn) loginBtn.hidden = false;
+    if (userEl) userEl.hidden = true;
+  }
+}
+
+function showAuthToast(type) {
+  const msg =
+    type === "success"
+      ? "Signed in — your history is now saved to the cloud."
+      : "Sign-in was cancelled or failed. Locally saved history is still available.";
+  const toast = document.createElement("div");
+  toast.className = `auth-toast auth-toast--${type} no-print`;
+  toast.setAttribute("role", "status");
+  toast.textContent = msg;
+  document.body.appendChild(toast);
+  window.setTimeout(() => toast.remove(), 5000);
+  const url = new URL(window.location.href);
+  url.searchParams.delete("auth");
+  window.history.replaceState({}, "", url.toString());
+}
+
+async function initAuth(formList) {
+  const loading = document.getElementById("auth-loading");
+  if (loading) loading.hidden = false;
+
+  const user = await fetchCurrentUser();
+  appState.user = user;
+  updateAuthWidget(user);
+
+  if (user) {
+    // DB is the source of truth for logged-in users.
+    // Fetch cloud entries and replace local history entirely.
+    const cloudEntries = await fetchLogsFromCloud();
+    if (cloudEntries !== null) {
+      // If there are local-only entries (created before sign-in), push them up first.
+      const localEntries = getHistory().filter(
+        (local) => !cloudEntries.some((cloud) => cloud.id === local.id)
+      );
+      if (localEntries.length) {
+        await pushLogsToCloud([...localEntries, ...cloudEntries]);
+        const merged = await fetchLogsFromCloud();
+        if (merged !== null) setHistory(merged);
+        else setHistory([...localEntries, ...cloudEntries].slice(0, HISTORY_LIMIT));
+      } else {
+        setHistory(cloudEntries);
+      }
+      formList.forEach((form) => renderHistory(form));
+    }
+  }
+
+  const authParam = new URLSearchParams(window.location.search).get("auth");
+  if (authParam === "success" || authParam === "error") {
+    showAuthToast(authParam);
+  }
+}
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+
+const allForms = [...document.querySelectorAll("form[data-thermometer]")];
+allForms.forEach(wireForm);
+initAuth(allForms);

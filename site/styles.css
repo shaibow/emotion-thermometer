@@ -17,6 +17,10 @@
   box-sizing: border-box;
 }
 
+[hidden] {
+  display: none !important;
+}
+
 body {
   position: relative;
   min-height: 100vh;
@@ -1168,4 +1172,141 @@ tr[data-zone].is-selected textarea:not(:disabled) {
     opacity: 1;
     background: transparent !important;
   }
+}
+
+/* ─── AUTH WIDGET ─────────────────────────────────────────────────────────── */
+
+.hero-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.auth-widget {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-shrink: 0;
+  margin-top: 0.25rem;
+}
+
+.auth-loading {
+  width: 22px;
+  height: 22px;
+  border: 2.5px solid var(--border);
+  border-top-color: #7c5cff;
+  border-radius: 50%;
+  animation: spin-soft 0.8s linear infinite;
+}
+
+.btn-google {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--ink);
+  background: #ffffff;
+  border: 1.5px solid var(--border);
+  border-radius: 999px;
+  text-decoration: none;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+  transition: box-shadow 0.15s, border-color 0.15s;
+  white-space: nowrap;
+}
+
+.btn-google:hover {
+  border-color: #7c5cff;
+  box-shadow: 0 2px 8px rgba(124,92,255,0.18);
+}
+
+.auth-user {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.auth-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 2px solid var(--border);
+  object-fit: cover;
+}
+
+.auth-name {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--ink);
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.btn-logout {
+  font-size: 0.78rem;
+  color: var(--muted);
+  text-decoration: none;
+  padding: 0.2rem 0.5rem;
+  border-radius: 6px;
+  transition: background 0.12s, color 0.12s;
+}
+
+.btn-logout:hover {
+  background: rgba(0,0,0,0.06);
+  color: var(--ink);
+}
+
+/* ─── AUTH TOAST ──────────────────────────────────────────────────────────── */
+
+.auth-toast {
+  position: fixed;
+  bottom: 1.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 0.75rem 1.25rem;
+  border-radius: 12px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  max-width: min(90vw, 480px);
+  text-align: center;
+  z-index: 1000;
+  animation: rise-in 300ms ease both;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.14);
+}
+
+.auth-toast--success {
+  background: #ecfdf5;
+  color: #065f46;
+  border: 1px solid #6ee7b7;
+}
+
+.auth-toast--error {
+  background: #fef2f2;
+  color: #991b1b;
+  border: 1px solid #fca5a5;
+}
+
+/* ─── SITE FOOTER ──────────────────────────────────────────────────────────── */
+
+.site-footer {
+  margin-top: 3rem;
+  padding: 1.25rem 0;
+  text-align: center;
+  border-top: 1px solid var(--border);
+  font-size: 0.8rem;
+}
+
+.site-footer a {
+  color: var(--muted);
+  text-decoration: none;
+  transition: color 0.12s;
+}
+
+.site-footer a:hover {
+  color: #7c5cff;
 }

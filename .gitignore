@@ -2,3 +2,4 @@ node_modules/
 examples/*.extracted.txt
 
 .vercel
+.env*.local

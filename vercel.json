@@ -1,8 +1,11 @@
 {
   "outputDirectory": "site",
   "functions": {
-    "api/generate-pdf.js": {
-      "memory": 512
-    }
+    "api/generate-pdf.js": { "memory": 512 },
+    "api/auth/google.js": { "memory": 128 },
+    "api/auth/callback.js": { "memory": 256 },
+    "api/auth/me.js": { "memory": 128 },
+    "api/auth/logout.js": { "memory": 128 },
+    "api/logs.js": { "memory": 256 }
   }
 }
